@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Cost Dashboard — Solutions & More</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface-2:#f0efe9;
+  --border:rgba(0,0,0,.09);--border-strong:rgba(0,0,0,.15);
+  --text:#0b0b0b;--text-2:#52514e;--text-3:#898781;
+  --accent:#1a56db;--accent-bg:#eff4ff;--accent-border:#bfcfff;--accent-text:#1a3a8f;
+  --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* PASSWORD */
+.pw-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999}
+.pw-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:36px;width:360px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.1);text-align:center}
+.pw-box h2{font-size:18px;font-weight:600;margin-bottom:6px}
+.pw-box p{font-size:13px;color:var(--text-3);margin-bottom:24px}
+.pw-box input{width:100%;border:1px solid var(--border-strong);border-radius:var(--radius);padding:10px 12px;font-size:15px;text-align:center;letter-spacing:.1em;margin-bottom:12px;color:var(--text);background:var(--bg)}
+.pw-box input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.pw-error{font-size:13px;color:#991b1b;margin-top:8px;display:none}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.logo{font-size:15px;font-weight:600}.logo span{color:var(--accent)}
+.badge{font-size:11px;background:var(--accent-bg);color:var(--accent-text);border:1px solid var(--accent-border);padding:2px 8px;border-radius:99px}
+
+/* LAYOUT */
+.container{max-width:1200px;margin:0 auto;padding:24px}
+
+/* BUTTONS */
+.btn{padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);transition:background .15s;white-space:nowrap}
+.btn:hover{background:var(--bg)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#1748c7}
+.btn-danger{background:#fef2f2;color:#991b1b;border-color:#fca5a5}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+/* CONFIG BAR */
+.config-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.config-bar label{font-size:13px;color:var(--text-2);font-weight:500;white-space:nowrap}
+.config-bar input[type=number]{border:1px solid var(--border-strong);border-radius:var(--radius);padding:6px 10px;font-size:14px;font-weight:600;color:var(--text);background:var(--bg);width:160px}
+.config-bar input:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:6px}
+.kpi-value{font-size:26px;font-weight:600;color:var(--text);line-height:1}
+.kpi-sub{font-size:12px;color:var(--text-3);margin-top:4px}
+.kpi.hl{border-color:var(--accent-border);background:var(--accent-bg)}
+.kpi.hl .kpi-value,.kpi.hl .kpi-label{color:var(--accent-text)}
+
+/* ADMIN CALLOUT */
+.admin-callout{background:#fffbeb;border:1px solid #fcd34d;border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:24px;margin-bottom:20px;flex-wrap:wrap}
+.ac-label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#92400e;opacity:.75}
+.ac-value{font-size:22px;font-weight:700;color:#92400e}
+.ac-note{font-size:12px;color:#92400e;opacity:.8;margin-left:auto;max-width:320px;line-height:1.4}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.tab-btn{padding:8px 16px;font-size:13px;font-weight:500;color:var(--text-3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;transition:color .15s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+.card-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.card-title{font-size:14px;font-weight:600;color:var(--text)}
+.card-body{padding:20px}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-wrap{position:relative}
+
+/* BREAKDOWN */
+.bd-item{display:flex;flex-direction:column;gap:4px;cursor:pointer;padding:10px;border-radius:var(--radius);transition:background .15s}
+.bd-item:hover{background:var(--bg)}
+.bd-top{display:flex;justify-content:space-between;align-items:baseline}
+.bd-name{font-size:13px;color:var(--text);font-weight:500}
+.bd-right{display:flex;gap:12px;align-items:baseline}
+.bd-pct{font-size:12px;color:var(--text-3)}
+.bd-amt{font-size:13px;font-weight:600;color:var(--text)}
+.bar-bg{height:5px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.bar-fill{height:5px;border-radius:99px}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{text-align:left;padding:10px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);background:var(--bg);border-bottom:1px solid var(--border);white-space:nowrap}
+.data-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:var(--bg)}
+.data-table input,.data-table select{border:1px solid var(--border-strong);border-radius:4px;padding:4px 8px;font-size:13px;background:var(--surface);color:var(--text);width:100%}
+.gbadge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500;white-space:nowrap}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:12px;padding:24px;width:440px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-size:16px;font-weight:600;margin-bottom:16px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:5px}
+.fg input,.fg select{width:100%;border:1px solid var(--border-strong);border-radius:var(--radius);padding:8px 10px;font-size:14px;color:var(--text);background:var(--bg)}
+.fg input:focus,.fg select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+/* DRILL PANEL */
+#drillOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:300}
+#drillPanel{position:fixed;top:0;right:0;height:100vh;width:420px;max-width:95vw;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.12);z-index:301;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;overflow:hidden}
+
+/* IMPORT BAR */
+.import-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.year-btn{padding:4px 14px;border-radius:99px;border:1px solid var(--border-strong);background:transparent;color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer}
+.year-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.drop-zone{border:1.5px dashed var(--border-strong);border-radius:var(--radius);padding:8px 16px;font-size:13px;color:var(--text-3);cursor:pointer;transition:all .15s;white-space:nowrap}
+.drop-zone:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text)}
+.import-status{font-size:12px;color:var(--text-3)}
+.import-status.ok{color:#166534}
+.import-status.err{color:#991b1b}
+
+/* PL BANNER */
+.pl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.pl-cell{padding:16px 18px;border-right:1px solid var(--border)}
+.pl-cell:last-child{border-right:none}
+.pl-cell-label{font-size:11px;color:var(--text-3);margin-bottom:4px}
+.pl-cell-value{font-size:20px;font-weight:600;line-height:1.2}
+.pl-cell-sub{font-size:11px;color:var(--text-3);margin-top:3px}
+
+/* ERROR BANNER */
+.error-banner{background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:13px;display:none}
+
+/* MOBILE */
+@media(max-width:640px){
+  .container{padding:12px}.header{padding:0 12px}.badge{display:none}
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:8px}.kpi{padding:12px}.kpi-value{font-size:18px}
+  .config-bar{padding:10px 12px;gap:8px}.config-bar input[type=number]{width:120px}
+  .charts-grid{grid-template-columns:1fr}
+  .card-body{padding:12px}.tabs{gap:0}.tab-btn{padding:8px 8px;font-size:12px}
+  .data-table th:nth-child(4),.data-table td:nth-child(4){display:none}
+  #drillPanel{width:100vw}.ac-note{display:none}
+  .pl-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- PASSWORD SCREEN -->
+<div class="pw-screen" id="pwScreen">
+  <div class="pw-box">
+    <div style="font-size:36px;margin-bottom:12px">&#128274;</div>
+    <h2>Solutions &amp; More</h2>
+    <p>Admin Cost Dashboard &mdash; Enter password to continue</p>
+    <input type="password" id="pwInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()" autofocus />
+    <button class="btn btn-primary" style="width:100%;padding:10px" onclick="doLogin()">Unlock dashboard</button>
+    <p class="pw-error" id="pwError">Incorrect password. Try again.</p>
+  </div>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div id="mainDash" style="display:none">
+
+  <header class="header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="logo">Solutions <span>&amp;</span> More</span>
+      <span class="badge">Admin Cost Dashboard</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:12px;color:var(--text-3)" id="lastUpdated">Loading...</span>
+      <button class="btn btn-sm" onclick="loadData()">&#8635; Refresh</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- CONFIG BAR -->
+    <div class="config-bar">
+      <label>Target monthly revenue</label>
+      <input type="number" id="targetRevenue" value="500000" step="10000" />
+      <button class="btn btn-primary" onclick="saveConfig()">Save target</button>
+      <span style="font-size:12px;color:var(--text-3)">Used to calculate admin fee %</span>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="openAddModal()">+ Add cost item</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Total yearly cost</div><div class="kpi-value" id="kpiTotal">-</div><div class="kpi-sub">Overhead + payroll</div></div>
+      <div class="kpi"><div class="kpi-label">Monthly burn</div><div class="kpi-value" id="kpiMonthly">-</div><div class="kpi-sub">Per month to operate</div></div>
+      <div class="kpi"><div class="kpi-label">Daily cost</div><div class="kpi-value" id="kpiDaily">-</div><div class="kpi-sub">Every business day</div></div>
+      <div class="kpi"><div class="kpi-label">Hourly cost</div><div class="kpi-value" id="kpiHourly">-</div><div class="kpi-sub">To keep doors open</div></div>
+      <div class="kpi hl"><div class="kpi-label">Admin fee %</div><div class="kpi-value" id="kpiAdminFee">-</div><div class="kpi-sub" id="kpiAdminSub">At target revenue</div></div>
+    </div>
+
+    <!-- ADMIN CALLOUT -->
+    <div class="admin-callout">
+      <div><div class="ac-label">Total admin fee</div><div class="ac-value" id="acTotal">-</div></div>
+      <div><div class="ac-label">Overhead portion</div><div class="ac-value" id="acOverhead">-</div></div>
+      <div><div class="ac-label">Payroll portion</div><div class="ac-value" id="acPayroll">-</div></div>
+      <p class="ac-note">Every job you quote needs to carry this % just to cover operating costs before materials or profit.</p>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('charts')">Charts</button>
+      <button class="tab-btn" onclick="switchTab('breakdown')">Breakdown</button>
+      <button class="tab-btn" onclick="switchTab('data')">Edit data</button>
+      <button class="tab-btn" onclick="switchTab('profit')">&#128176; Profit</button>
+      <button class="tab-btn" onclick="switchTab('sales')">&#128200; Sales</button>
+    </div>
+
+    <!-- TAB: CHARTS -->
+    <div id="tab-charts">
+      <div class="charts-grid">
+        <div class="card"><div class="card-header"><span class="card-title">Payroll vs overhead</span></div><div class="card-body"><div class="chart-wrap" style="height:220px"><canvas id="overviewChart"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Overhead breakdown</span></div><div class="card-body"><div class="chart-wrap" style="height:220px"><canvas id="overheadChart"></canvas></div></div></div>
+      </div>
+      <div class="card"><div class="card-header"><span class="card-title">All cost groups &mdash; click a bar to drill in</span></div><div class="card-body"><div class="chart-wrap" style="height:280px"><canvas id="allGroupsChart"></canvas></div></div></div>
+    </div>
+
+    <!-- TAB: BREAKDOWN -->
+    <div id="tab-breakdown" style="display:none">
+      <div class="card"><div class="card-header"><span class="card-title">Cost by group &mdash; click to drill in</span></div><div class="card-body"><div id="breakdownList"></div></div></div>
+    </div>
+
+    <!-- TAB: EDIT DATA -->
+    <div id="tab-data" style="display:none">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Cost items</span><button class="btn btn-sm btn-primary" onclick="openAddModal()">+ Add item</button></div>
+        <div style="overflow-x:auto">
+          <table class="data-table"><thead><tr><th>Category</th><th>Group</th><th>Yearly amount</th><th>Notes</th><th></th></tr></thead><tbody id="dataTableBody"><tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-3)">Loading...</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: PROFIT -->
+    <div id="tab-profit" style="display:none">
+      <div class="import-bar">
+        <label style="font-size:13px;color:var(--text-2);font-weight:500">Year:</label>
+        <div id="yearToggle" style="display:flex;gap:4px"></div>
+        <label style="font-size:13px;color:var(--text-2);font-weight:500;margin-left:8px">Import sales file:</label>
+        <div class="drop-zone" onclick="document.getElementById('fileInputP').click()" ondragover="event.preventDefault();this.classList.add('drop-zone-active')" ondragleave="this.classList.remove('drop-zone-active')" ondrop="handleDrop(event)">
+          &#128194; Drop Excel or click to browse
+        </div>
+        <input type="file" id="fileInputP" accept=".xls,.xlsx" style="display:none" onchange="handleFileSelect(event)" />
+        <span class="import-status" id="importStatusP"></span>
+      </div>
+
+      <!-- Year comparison -->
+      <div class="card" id="yearCompCard" style="margin-bottom:16px;display:none">
+        <div class="card-header"><span class="card-title">Year over year comparison</span></div>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="yearCompTable">
+            <thead><tr>
+              <th>Year</th>
+              <th>Total sales</th>
+              <th>Cost of goods</th>
+              <th>Gross margin</th>
+              <th>Gross %</th>
+              <th>Admin cost</th>
+              <th>Net profit</th>
+              <th>Net %</th>
+            </tr></thead>
+            <tbody id="yearCompBody"></tbody>
+          </table>
+        </div>
+        <div class="card-body" style="padding-top:0">
+          <div class="chart-wrap" style="height:220px;margin-top:16px">
+            <canvas id="yearCompChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow)">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:14px" id="plTitle">2024 Profit &amp; Loss Summary</div>
+        <div class="pl-grid" id="plGrid">
+          <div class="pl-cell"><div class="pl-cell-label">Total Sales</div><div class="pl-cell-value">$2,913,254</div><div class="pl-cell-sub">3,709 orders</div></div>
+          <div class="pl-cell"><div class="pl-cell-label">Cost of Goods</div><div class="pl-cell-value" style="color:#991b1b">-$1,122,581</div><div class="pl-cell-sub">38.5% of sales</div></div>
+          <div class="pl-cell"><div class="pl-cell-label">Gross Margin</div><div class="pl-cell-value" style="color:#1baf7a">$1,790,674</div><div class="pl-cell-sub">61.5% margin rate</div></div>
+          <div class="pl-cell"><div class="pl-cell-label">Admin &amp; Overhead</div><div class="pl-cell-value" style="color:#991b1b">-$1,251,052</div><div class="pl-cell-sub">Payroll + overhead</div></div>
+          <div class="pl-cell" style="background:#f0fdf4"><div class="pl-cell-label" style="color:#166534;font-weight:600">Net Profit</div><div class="pl-cell-value" style="color:#166534">$539,622</div><div class="pl-cell-sub" style="color:#166534">18.5% net margin</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px"><div class="card-header"><span class="card-title">P&amp;L waterfall</span></div><div class="card-body"><div class="chart-wrap" style="height:280px"><canvas id="waterfallChart"></canvas></div></div></div>
+      <div class="card" style="margin-bottom:16px"><div class="card-header"><span class="card-title">Monthly net profit</span><span style="font-size:12px;color:var(--text-3)">Green = profit &middot; Red = loss</span></div><div class="card-body"><div class="chart-wrap" style="height:240px"><canvas id="monthlyNetChart"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><span class="card-title">Monthly P&amp;L breakdown</span></div>
+        <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Month</th><th>Sales</th><th>COGS</th><th>Gross margin</th><th>Admin cost</th><th>Net profit</th><th>Net %</th></tr></thead>
+        <tbody id="profitTableBody"><tr><td style="font-weight:500">Jan</td><td>$165,439</td><td style="color:#991b1b">$47,669</td><td style="color:#1baf7a">$117,770</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$13,516</td><td><span style="font-size:12px;color:#166534">8.2%</span></td></tr><tr><td style="font-weight:500">Feb</td><td>$254,688</td><td style="color:#991b1b">$65,340</td><td style="color:#1baf7a">$189,348</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$85,094</td><td><span style="font-size:12px;color:#166534">33.4%</span></td></tr><tr><td style="font-weight:500">Mar</td><td>$164,749</td><td style="color:#991b1b">$67,435</td><td style="color:#1baf7a">$97,314</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#991b1b">-$6,940</td><td><span style="font-size:12px;color:#991b1b">-4.2%</span></td></tr><tr><td style="font-weight:500">Apr</td><td>$245,424</td><td style="color:#991b1b">$82,056</td><td style="color:#1baf7a">$163,367</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$59,113</td><td><span style="font-size:12px;color:#166534">24.1%</span></td></tr><tr><td style="font-weight:500">May</td><td>$256,252</td><td style="color:#991b1b">$66,821</td><td style="color:#1baf7a">$189,431</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$85,176</td><td><span style="font-size:12px;color:#166534">33.2%</span></td></tr><tr><td style="font-weight:500">Jun</td><td>$222,188</td><td style="color:#991b1b">$88,253</td><td style="color:#1baf7a">$133,935</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$29,681</td><td><span style="font-size:12px;color:#166534">13.4%</span></td></tr><tr><td style="font-weight:500">Jul</td><td>$169,380</td><td style="color:#991b1b">$81,166</td><td style="color:#1baf7a">$88,214</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#991b1b">-$16,040</td><td><span style="font-size:12px;color:#991b1b">-9.5%</span></td></tr><tr><td style="font-weight:500">Aug</td><td>$272,337</td><td style="color:#991b1b">$79,594</td><td style="color:#1baf7a">$192,743</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$88,489</td><td><span style="font-size:12px;color:#166534">32.5%</span></td></tr><tr><td style="font-weight:500">Sep</td><td>$354,746</td><td style="color:#991b1b">$169,446</td><td style="color:#1baf7a">$185,300</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$81,046</td><td><span style="font-size:12px;color:#166534">22.8%</span></td></tr><tr><td style="font-weight:500">Oct</td><td>$288,629</td><td style="color:#991b1b">$171,746</td><td style="color:#1baf7a">$116,883</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$12,628</td><td><span style="font-size:12px;color:#166534">4.4%</span></td></tr><tr><td style="font-weight:500">Nov</td><td>$230,982</td><td style="color:#991b1b">$103,710</td><td style="color:#1baf7a">$127,272</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$23,018</td><td><span style="font-size:12px;color:#166534">10.0%</span></td></tr><tr><td style="font-weight:500">Dec</td><td>$288,442</td><td style="color:#991b1b">$99,345</td><td style="color:#1baf7a">$189,097</td><td style="color:#52514e">$104,254</td><td style="font-weight:600;color:#166534">$84,842</td><td><span style="font-size:12px;color:#166534">29.4%</span></td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- TAB: SALES -->
+    <div id="tab-sales" style="display:none">
+      <div class="import-bar">
+        <label style="font-size:13px;color:var(--text-2);font-weight:500">Year:</label>
+        <div id="yearToggle2" style="display:flex;gap:4px"></div>
+        <label style="font-size:13px;color:var(--text-2);font-weight:500;margin-left:8px">Import sales file:</label>
+        <div class="drop-zone" onclick="document.getElementById('fileInputS').click()" ondragover="event.preventDefault()" ondrop="handleDrop(event)">
+          &#128194; Drop Excel or click to browse
+        </div>
+        <input type="file" id="fileInputS" accept=".xls,.xlsx" style="display:none" onchange="handleFileSelect(event)" />
+        <span class="import-status" id="importStatusS"></span>
+      </div>
+
+      <div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:10px">Showing: <span id="salesYearLabel" style="color:var(--accent)">2024</span></div>
+      <div class="kpi-grid" style="margin-bottom:16px">
+        <div class="kpi hl"><div class="kpi-label">Total sales</div><div class="kpi-value" id="sTotalSales">$2.91M</div><div class="kpi-sub" id="sTotalOrders">3,709 orders</div></div>
+        <div class="kpi"><div class="kpi-label">Total cost</div><div class="kpi-value" id="sTotalCogs">$1.12M</div><div class="kpi-sub">Cost of goods</div></div>
+        <div class="kpi"><div class="kpi-label">Gross margin</div><div class="kpi-value" id="sGrossMargin">$1.79M</div><div class="kpi-sub" id="sMarginRate">61.5% margin rate</div></div>
+        <div class="kpi"><div class="kpi-label">Avg order value</div><div class="kpi-value" id="sAvgOrder">$785</div><div class="kpi-sub">Per order</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px"><div class="card-header"><span class="card-title">Monthly sales &amp; margin</span></div><div class="card-body"><div class="chart-wrap" style="height:260px"><canvas id="salesMonthlyChart"></canvas></div></div></div>
+      <div class="charts-grid" style="margin-bottom:16px">
+        <div class="card"><div class="card-header"><span class="card-title">Sales by rep</span></div><div class="card-body"><div class="chart-wrap" style="height:220px"><canvas id="salesRepChart"></canvas></div></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Sales by day of week</span></div><div class="card-body"><div class="chart-wrap" style="height:220px"><canvas id="salesDowChart"></canvas></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Top customers</span>
+          <input type="text" id="custSearch" placeholder="Search customer..." onkeyup="filterCustomers()" style="border:1px solid var(--border-strong);border-radius:var(--radius);padding:5px 10px;font-size:13px;background:var(--bg);color:var(--text);width:200px" />
+        </div>
+        <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>#</th><th>Customer</th><th>Total sales</th><th>Orders</th><th>Avg order</th><th>% of total</th></tr></thead><tbody id="custTableBody"></tbody></table></div>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+</div><!-- /mainDash -->
+
+<!-- DRILL PANEL -->
+<div id="drillOverlay" onclick="closeDrill()"></div>
+<div id="drillPanel">
+  <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div><div id="drillLabel" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:3px">Group</div><div id="drillTitle" style="font-size:18px;font-weight:600">-</div></div>
+    <button onclick="closeDrill()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-3);padding:4px 8px;border-radius:4px">&#10005;</button>
+  </div>
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div><div style="font-size:11px;color:var(--text-3);margin-bottom:3px">Yearly total</div><div id="drillYearly" style="font-size:16px;font-weight:600">-</div></div>
+    <div><div style="font-size:11px;color:var(--text-3);margin-bottom:3px">Monthly</div><div id="drillMonthly" style="font-size:16px;font-weight:600">-</div></div>
+    <div><div style="font-size:11px;color:var(--text-3);margin-bottom:3px">% of total</div><div id="drillPct" style="font-size:16px;font-weight:600">-</div></div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px 20px">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>
+        <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-3);background:var(--bg);border-bottom:1px solid var(--border)">Item</th>
+        <th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-3);background:var(--bg);border-bottom:1px solid var(--border)">Yearly</th>
+        <th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-3);background:var(--bg);border-bottom:1px solid var(--border)">Monthly</th>
+        <th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-3);background:var(--bg);border-bottom:1px solid var(--border)">Share</th>
+      </tr></thead>
+      <tbody id="drillBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">Add cost item</h3>
+    <div class="fg"><label>Category name</label><input type="text" id="mCat" placeholder="e.g. SoCal Edison" /></div>
+    <div class="fg"><label>Group</label><select id="mGroup"><option>Payroll - Solutions</option><option>Payroll - MH</option><option>Payroll - Executive</option><option>Benefits</option><option>Buildings</option><option>Equipment Lease</option><option>Software/Systems</option><option>Utilities</option><option>Misc</option></select></div>
+    <div class="fg"><label>Yearly amount ($)</label><input type="number" id="mAmount" placeholder="0" step="0.01" /></div>
+    <div class="fg"><label>Notes (optional)</label><input type="text" id="mNotes" /></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveItem()">Save item</button></div>
+  </div>
+</div>
+
+<script>
+// ----------------------------------------
+// CONFIG
+// ----------------------------------------
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4F-zr8s_0Jg79Bw0bexzAI8W_-M4PrZ28TsGTgHVthFbHeZp9p5qQsfRtWOUuH8uPkQ/exec';
+var PASSWORD = 'Solutions123';
+var PASS_KEY = 'sm_dash_auth_v2';
+
+var GROUPS = ['Payroll - Solutions','Payroll - MH','Payroll - Executive','Benefits','Buildings','Equipment Lease','Software/Systems','Utilities','Misc'];
+var PAYROLL_GROUPS = ['Payroll - Solutions','Payroll - MH','Payroll - Executive','Benefits'];
+var GROUP_COLORS = {};
+GROUP_COLORS['Payroll - Solutions'] = '#2a78d6';
+GROUP_COLORS['Payroll - MH'] = '#1baf7a';
+GROUP_COLORS['Payroll - Executive'] = '#eda100';
+GROUP_COLORS['Benefits'] = '#e34948';
+GROUP_COLORS['Buildings'] = '#4a3aa7';
+GROUP_COLORS['Equipment Lease'] = '#e87ba4';
+GROUP_COLORS['Software/Systems'] = '#eb6834';
+GROUP_COLORS['Utilities'] = '#06b6d4';
+GROUP_COLORS['Misc'] = '#888780';
+
+var allData = [];
+var targetRevenue = 500000;
+var grandTotalCache = 0;
+var charts = {};
+var editingRowIndex = null;
+
+// ----------------------------------------
+// AUTH
+// ----------------------------------------
+function doLogin() {
+  var val = document.getElementById('pwInput').value.trim();
+  if (val === PASSWORD) {
+    document.getElementById('pwScreen').style.display = 'none';
+    document.getElementById('mainDash').style.display = 'block';
+    loadData();
+    updateYearToggles();
+  } else {
+    document.getElementById('pwError').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+function checkAuth() {
+  return false;
+}
+
+// ----------------------------------------
+// DATA LOADING
+// ----------------------------------------
+async function loadData() {
+  document.getElementById('lastUpdated').textContent = 'Loading...';
+  hideError();
+  try {
+    // Load overhead data and saved sales years in parallel
+    var [overheadRes, salesRes] = await Promise.all([
+      fetch(SCRIPT_URL + '?action=getData'),
+      fetch(SCRIPT_URL + '?action=getSalesYears')
+    ]);
+    var overheadJson = await overheadRes.json();
+    var salesJson = await salesRes.json();
+
+    allData = overheadJson.rows || [];
+    targetRevenue = overheadJson.targetRevenue || 500000;
+    document.getElementById('targetRevenue').value = targetRevenue;
+
+    // Merge saved sales years (keep 2024 base, add any saved ones)
+    if (salesJson.years) {
+      Object.keys(salesJson.years).forEach(function(label) {
+        salesYears[label] = salesJson.years[label];
+      });
+    }
+
+    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    updateYearToggles();
+    render();
+  } catch(e) {
+    showError('Could not load data. Check your Apps Script deployment.');
+    document.getElementById('lastUpdated').textContent = 'Error';
+  }
+}
+
+async function saveConfig() {
+  var val = Number(document.getElementById('targetRevenue').value);
+  if (!val || val <= 0) { alert('Enter a valid revenue target.'); return; }
+  targetRevenue = val;
+  try {
+    await fetch(SCRIPT_URL, {method:'POST', body: JSON.stringify({action:'updateConfig', targetRevenue: val})});
+    render();
+    document.getElementById('lastUpdated').textContent = 'Target saved';
+  } catch(e) { showError('Could not save target.'); }
+}
+
+// ----------------------------------------
+// RENDER OVERHEAD DASHBOARD
+// ----------------------------------------
+function render() {
+  var grouped = {};
+  GROUPS.forEach(function(g) { grouped[g] = []; });
+  allData.forEach(function(r) { if (grouped[r.group]) grouped[r.group].push(r); });
+
+  var groupTotals = {};
+  GROUPS.forEach(function(g) {
+    groupTotals[g] = grouped[g].reduce(function(s,r){ return s + Number(r.yearlyAmount||0); }, 0);
+  });
+
+  var totalPayroll = PAYROLL_GROUPS.reduce(function(s,g){ return s + (groupTotals[g]||0); }, 0);
+  var totalOverhead = (groupTotals['Buildings']||0)+(groupTotals['Equipment Lease']||0)+(groupTotals['Software/Systems']||0)+(groupTotals['Utilities']||0)+(groupTotals['Misc']||0);
+  var grandTotal = totalPayroll + totalOverhead;
+  grandTotalCache = grandTotal;
+
+  var monthly = grandTotal / 12;
+  var daily = grandTotal / 251;
+  var hourly = daily / 8;
+  var adminFee = (monthly / targetRevenue) * 100;
+  var ohFee = (totalOverhead / 12 / targetRevenue) * 100;
+  var pwFee = (totalPayroll / 12 / targetRevenue) * 100;
+
+  document.getElementById('kpiTotal').textContent = fmtShort(grandTotal);
+  document.getElementById('kpiMonthly').textContent = fmtShort(monthly);
+  document.getElementById('kpiDaily').textContent = fmtShort(daily);
+  document.getElementById('kpiHourly').textContent = fmtShort(hourly);
+  document.getElementById('kpiAdminFee').textContent = adminFee.toFixed(2) + '%';
+  document.getElementById('kpiAdminSub').textContent = 'At ' + fmtFull(targetRevenue) + '/mo';
+  document.getElementById('acTotal').textContent = adminFee.toFixed(2) + '%';
+  document.getElementById('acOverhead').textContent = ohFee.toFixed(2) + '%';
+  document.getElementById('acPayroll').textContent = pwFee.toFixed(2) + '%';
+
+  renderCharts(groupTotals, totalPayroll, totalOverhead);
+  renderBreakdown(groupTotals, grandTotal);
+  renderTable();
+}
+
+function renderCharts(groupTotals, totalPayroll, totalOverhead) {
+  var tm = '#898781', gc = 'rgba(0,0,0,.06)';
+  var yAxis = {ticks:{color:tm,font:{size:10},callback:function(v){return '$'+(v/1000).toFixed(0)+'K';}},grid:{color:gc},border:{display:false}};
+  var xAxis = {ticks:{color:tm,font:{size:11}},grid:{display:false},border:{display:false}};
+
+  if (charts.overview) charts.overview.destroy();
+  charts.overview = new Chart(document.getElementById('overviewChart'), {
+    type:'bar',
+    data:{labels:['Total payroll','Total overhead'],datasets:[{data:[totalPayroll,totalOverhead],backgroundColor:['#2a78d6','#1baf7a'],borderRadius:4,borderSkipped:false,barThickness:56}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      onClick:function(e,els){if(els.length){var groups=els[0].index===0?PAYROLL_GROUPS:['Buildings','Equipment Lease','Software/Systems','Utilities','Misc'];openDrillMulti(els[0].index===0?'All Payroll':'All Overhead',groups);}},
+      onHover:function(e,els){e.native.target.style.cursor=els.length?'pointer':'default';},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+fmtFull(ctx.parsed.y);}}}},
+      scales:{x:xAxis,y:yAxis}}
+  });
+
+  var ohGroups = ['Buildings','Equipment Lease','Software/Systems','Utilities','Misc'];
+  var ohColors = ['#2a78d6','#eda100','#eb6834','#1baf7a','#888780'];
+  if (charts.overhead) charts.overhead.destroy();
+  charts.overhead = new Chart(document.getElementById('overheadChart'), {
+    type:'doughnut',
+    data:{labels:ohGroups,datasets:[{data:ohGroups.map(function(g){return groupTotals[g]||0;}),backgroundColor:ohColors,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'right',labels:{font:{size:11},color:tm,boxWidth:10,padding:10}},
+      tooltip:{callbacks:{label:function(ctx){return ' '+fmtFull(ctx.parsed);}}}}}
+  });
+
+  if (charts.allGroups) charts.allGroups.destroy();
+  charts.allGroups = new Chart(document.getElementById('allGroupsChart'), {
+    type:'bar',
+    data:{labels:GROUPS,datasets:[{data:GROUPS.map(function(g){return groupTotals[g]||0;}),backgroundColor:GROUPS.map(function(g){return GROUP_COLORS[g]||'#888780';}),borderRadius:4,borderSkipped:false,barThickness:36}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      onClick:function(e,els){if(els.length)openDrill(GROUPS[els[0].index]);},
+      onHover:function(e,els){e.native.target.style.cursor=els.length?'pointer':'default';},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+fmtFull(ctx.parsed.y)+' - click to drill in';}}}}  ,
+      scales:{x:{ticks:{color:tm,font:{size:11},maxRotation:35,autoSkip:false},grid:{display:false},border:{display:false}},y:yAxis}}
+  });
+}
+
+function renderBreakdown(groupTotals, grandTotal) {
+  var sorted = GROUPS.map(function(g){return {name:g,total:groupTotals[g]||0};}).sort(function(a,b){return b.total-a.total;});
+  document.getElementById('breakdownList').innerHTML = sorted.map(function(item) {
+    var pct = grandTotal > 0 ? (item.total/grandTotal*100) : 0;
+    var color = GROUP_COLORS[item.name]||'#888780';
+    return '<div class="bd-item" onclick="openDrill(&quot;'+item.name+'&quot;)">'
+      +'<div class="bd-top"><span class="bd-name">'+item.name+'</span><div class="bd-right"><span class="bd-pct">'+pct.toFixed(1)+'%</span><span class="bd-amt">'+fmtFull(item.total)+'</span><span style="font-size:12px;color:var(--text-3)">&#8250;</span></div></div>'
+      +'<div class="bar-bg"><div class="bar-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function renderTable() {
+  var tbody = document.getElementById('dataTableBody');
+  if (!allData.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-3)">No data. Add a cost item.</td></tr>'; return; }
+  tbody.innerHTML = allData.map(function(row) {
+    var color = GROUP_COLORS[row.group]||'#888780';
+    return '<tr><td>'+row.category+'</td>'
+      +'<td><span class="gbadge" style="background:'+color+'22;color:'+color+'">'+row.group+'</span></td>'
+      +'<td>'+fmtFull(row.yearlyAmount)+'</td>'
+      +'<td style="color:var(--text-3)">'+( row.notes||'')+'</td>'
+      +'<td style="white-space:nowrap"><button class="btn btn-sm" onclick="openEditModal('+row.rowIndex+')">Edit</button> <button class="btn btn-sm btn-danger" onclick="deleteItem('+row.rowIndex+')">Delete</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ----------------------------------------
+// DRILL DOWN
+// ----------------------------------------
+function openDrill(groupName) {
+  var rows = allData.filter(function(r){ return r.group === groupName; });
+  var groupTotal = rows.reduce(function(s,r){ return s + Number(r.yearlyAmount||0); }, 0);
+  var color = GROUP_COLORS[groupName]||'#888780';
+  document.getElementById('drillLabel').textContent = 'Group breakdown';
+  document.getElementById('drillTitle').textContent = groupName;
+  document.getElementById('drillTitle').style.color = color;
+  document.getElementById('drillYearly').textContent = fmtFull(groupTotal);
+  document.getElementById('drillMonthly').textContent = fmtFull(groupTotal/12);
+  document.getElementById('drillPct').textContent = grandTotalCache > 0 ? (groupTotal/grandTotalCache*100).toFixed(1)+'%' : '-';
+  var sorted = rows.slice().sort(function(a,b){ return b.yearlyAmount-a.yearlyAmount; });
+  document.getElementById('drillBody').innerHTML = sorted.map(function(row) {
+    var share = groupTotal > 0 ? (row.yearlyAmount/groupTotal*100).toFixed(1) : '0';
+    var barW = groupTotal > 0 ? (row.yearlyAmount/groupTotal*100) : 0;
+    return '<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:10px"><div style="font-weight:500;margin-bottom:4px">'+row.category+'</div>'
+      +'<div style="height:3px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:3px;background:'+color+';border-radius:99px;width:'+barW+'%"></div></div>'
+      +(row.notes?'<div style="font-size:11px;color:var(--text-3);margin-top:3px">'+row.notes+'</div>':'')
+      +'</td>'
+      +'<td style="padding:10px;text-align:right;font-weight:600;white-space:nowrap">'+fmtFull(row.yearlyAmount)+'</td>'
+      +'<td style="padding:10px;text-align:right;color:var(--text-2);white-space:nowrap">'+fmtFull(row.yearlyAmount/12)+'</td>'
+      +'<td style="padding:10px;text-align:right;color:var(--text-3);white-space:nowrap">'+share+'%</td>'
+      +'</tr>';
+  }).join('');
+  document.getElementById('drillOverlay').style.display = 'block';
+  document.getElementById('drillPanel').style.transform = 'translateX(0)';
+}
+
+function openDrillMulti(title, groups) {
+  var rows = allData.filter(function(r){ return groups.indexOf(r.group) !== -1; });
+  var groupTotal = rows.reduce(function(s,r){ return s+Number(r.yearlyAmount||0); }, 0);
+  document.getElementById('drillLabel').textContent = 'Group breakdown';
+  document.getElementById('drillTitle').textContent = title;
+  document.getElementById('drillTitle').style.color = '#0b0b0b';
+  document.getElementById('drillYearly').textContent = fmtFull(groupTotal);
+  document.getElementById('drillMonthly').textContent = fmtFull(groupTotal/12);
+  document.getElementById('drillPct').textContent = grandTotalCache > 0 ? (groupTotal/grandTotalCache*100).toFixed(1)+'%' : '-';
+  var sorted = rows.slice().sort(function(a,b){ return b.yearlyAmount-a.yearlyAmount; });
+  document.getElementById('drillBody').innerHTML = sorted.map(function(row) {
+    var color = GROUP_COLORS[row.group]||'#888780';
+    var share = groupTotal > 0 ? (row.yearlyAmount/groupTotal*100).toFixed(1) : '0';
+    var barW = groupTotal > 0 ? (row.yearlyAmount/groupTotal*100) : 0;
+    return '<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:10px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0"></span><span style="font-weight:500">'+row.category+'</span></div>'
+      +'<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;padding-left:14px">'+row.group+'</div>'
+      +'<div style="height:3px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:3px;background:'+color+';border-radius:99px;width:'+barW+'%"></div></div>'
+      +'</td>'
+      +'<td style="padding:10px;text-align:right;font-weight:600;white-space:nowrap">'+fmtFull(row.yearlyAmount)+'</td>'
+      +'<td style="padding:10px;text-align:right;color:var(--text-2);white-space:nowrap">'+fmtFull(row.yearlyAmount/12)+'</td>'
+      +'<td style="padding:10px;text-align:right;color:var(--text-3);white-space:nowrap">'+share+'%</td>'
+      +'</tr>';
+  }).join('');
+  document.getElementById('drillOverlay').style.display = 'block';
+  document.getElementById('drillPanel').style.transform = 'translateX(0)';
+}
+
+function closeDrill() {
+  document.getElementById('drillPanel').style.transform = 'translateX(100%)';
+  setTimeout(function(){ document.getElementById('drillOverlay').style.display = 'none'; }, 250);
+}
+
+// ----------------------------------------
+// MODAL
+// ----------------------------------------
+function openAddModal() {
+  editingRowIndex = null;
+  document.getElementById('modalTitle').textContent = 'Add cost item';
+  document.getElementById('mCat').value = '';
+  document.getElementById('mGroup').value = 'Misc';
+  document.getElementById('mAmount').value = '';
+  document.getElementById('mNotes').value = '';
+  document.getElementById('modal').classList.add('open');
+}
+function openEditModal(rowIndex) {
+  var row = allData.find(function(r){ return r.rowIndex === rowIndex; });
+  if (!row) return;
+  editingRowIndex = rowIndex;
+  document.getElementById('modalTitle').textContent = 'Edit cost item';
+  document.getElementById('mCat').value = row.category;
+  document.getElementById('mGroup').value = row.group;
+  document.getElementById('mAmount').value = row.yearlyAmount;
+  document.getElementById('mNotes').value = row.notes||'';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', function(e){ if(e.target===this)closeModal(); });
+
+async function saveItem() {
+  var category = document.getElementById('mCat').value.trim();
+  var group = document.getElementById('mGroup').value;
+  var yearlyAmount = Number(document.getElementById('mAmount').value);
+  var notes = document.getElementById('mNotes').value.trim();
+  if (!category) { alert('Category name is required.'); return; }
+  if (!yearlyAmount || yearlyAmount <= 0) { alert('Enter a valid yearly amount.'); return; }
+  closeModal();
+  try {
+    if (editingRowIndex) {
+      await fetch(SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'updateRow',rowIndex:editingRowIndex,category,group,yearlyAmount,notes})});
+    } else {
+      await fetch(SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'addRow',category,group,yearlyAmount,notes})});
+    }
+    await loadData();
+  } catch(e) { showError('Could not save item.'); }
+}
+
+async function deleteItem(rowIndex) {
+  var row = allData.find(function(r){ return r.rowIndex === rowIndex; });
+  if (!confirm('Delete "' + (row ? row.category : 'this item') + '"? This cannot be undone.')) return;
+  try {
+    await fetch(SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'deleteRow',rowIndex})});
+    await loadData();
+  } catch(e) { showError('Could not delete.'); }
+}
+
+// ----------------------------------------
+// TABS
+// ----------------------------------------
+var tabNames = ['charts','breakdown','data','profit','sales'];
+function switchTab(name) {
+  tabNames.forEach(function(t) {
+    var el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(btn, i) {
+    btn.classList.toggle('active', tabNames[i] === name);
+  });
+  if (name === 'profit') { setTimeout(function(){ renderProfitCharts(); }, 50); }
+  if (name === 'sales') { setTimeout(function(){ renderSalesCharts(); }, 50); }
+}
+
+// ----------------------------------------
+// MULTI-YEAR SALES DATA
+// ----------------------------------------
+var TOTAL_ADMIN = 1251052.05;
+var MONTHLY_ADMIN = 104254.34;
+
+var salesYears = {
+  "2024": {
+    total_sales: 2913254.33,
+    total_cogs: 1122580.61,
+    gross_margin: 1790673.72,
+    total_orders: 3709,
+    avg_order: 785.46,
+    monthly_sales: [165438.76, 254688.16, 164749.07, 245423.9, 256251.63, 222187.51, 169379.88, 272337.35, 354745.6, 288628.78, 230982.12, 288441.57],
+    monthly_cogs: [47668.69, 65340.3, 67435.0, 82056.44, 66820.92, 88252.56, 81165.72, 79594.48, 169445.56, 171746.04, 103710.08, 99344.82],
+    monthly_margin: [117770.07, 189347.86, 97314.07, 163367.46, 189430.71, 133934.95, 88214.16, 192742.87, 185300.04, 116882.74, 127272.04, 189096.75],
+    monthly_net: [13515.73, 85093.52, -6940.27, 59113.12, 85176.37, 29680.61, -16040.18, 88488.53, 81045.7, 12628.4, 23017.7, 84842.41],
+    monthly_net_pct: [8.17, 33.41, -4.21, 24.09, 33.24, 13.36, -9.47, 32.49, 22.85, 4.38, 9.97, 29.41],
+    monthly_orders: [223, 321, 328, 343, 391, 354, 299, 349, 326, 351, 211, 213],
+    by_rep: {"Frankie Clemente": {"sales": 308710.64, "orders": 264, "margin": 162880.39}, "House Account": {"sales": 1823605.41, "orders": 3237, "margin": 1182461.2}, "Alicia": {"sales": 684008.28, "orders": 180, "margin": 364482.13}, "Sr": {"sales": 96930.0, "orders": 28, "margin": 80850.0}},
+    by_customer: [{"name": "USC Arcadia Hospital", "sales": 1105888.16, "orders": 1721}, {"name": "USC Arcadia Hospital Furniture", "sales": 447449.42, "orders": 73}, {"name": "Keck Hospital Of USC", "sales": 348585.07, "orders": 311}, {"name": "Pomona Valley Hospital Medical Center", "sales": 256276.54, "orders": 506}, {"name": "Sierra View Medical Center", "sales": 240150.78, "orders": 647}, {"name": "Providence Medical Center", "sales": 208336.02, "orders": 45}, {"name": "UC Irvine Medical Center", "sales": 107572.25, "orders": 29}, {"name": "PIH Health Good Samaritan Hospital", "sales": 29815.75, "orders": 53}, {"name": "Type Gallery", "sales": 24858.59, "orders": 24}, {"name": "PRO Boxing", "sales": 22313.0, "orders": 35}, {"name": "Adventist Medical Center", "sales": 20084.0, "orders": 33}, {"name": "Columbia School ", "sales": 14135.0, "orders": 3}, {"name": "Palmdale Regional Medical Center", "sales": 12027.5, "orders": 2}, {"name": "USC Verdugo Hills Hospital", "sales": 9865.4, "orders": 7}, {"name": "Miscellaneous Clients", "sales": 8340.46, "orders": 25}, {"name": "Ortiz Printing & Graphics, Inc", "sales": 7003.36, "orders": 9}, {"name": "Portable Dialysis Services", "sales": 5322.8, "orders": 4}, {"name": "Adventist Health Simi Valley", "sales": 4020.55, "orders": 2}, {"name": "Providence Holy Cross", "sales": 3609.95, "orders": 1}, {"name": "TradeShow Supply", "sales": 3400.0, "orders": 2}, {"name": "Paperplum", "sales": 2953.83, "orders": 67}, {"name": "Rosemead School District ", "sales": 2950.0, "orders": 2}, {"name": "Spartan Express, Inc.", "sales": 2724.45, "orders": 4}, {"name": "Intersteller Systems", "sales": 2662.8, "orders": 9}, {"name": "Xylem", "sales": 2391.59, "orders": 1}, {"name": "Providence Saint Johns Health Center", "sales": 2100.0, "orders": 2}, {"name": "White Memorial Hospital", "sales": 1800.0, "orders": 1}, {"name": "Cherrlylee School", "sales": 1790.0, "orders": 1}, {"name": "KLUTCH CONSTRUCTION", "sales": 1721.0, "orders": 4}, {"name": "Covina Baseball Association ", "sales": 1664.4, "orders": 16}, {"name": "Irwindale Chamber of Commerce", "sales": 1397.56, "orders": 10}, {"name": "Bridgewater Lodge Group", "sales": 1220.0, "orders": 1}, {"name": "Auxiliary of Pomona Valley Hospital", "sales": 1136.5, "orders": 5}, {"name": "BrainChip Inc.", "sales": 998.5, "orders": 3}, {"name": "Cortada School", "sales": 840.0, "orders": 3}, {"name": "City of Hope - OC", "sales": 823.58, "orders": 3}, {"name": "San Dimas High School Band Boosters", "sales": 656.0, "orders": 2}, {"name": "Law Office of Eloy A. Aguirre", "sales": 572.85, "orders": 2}, {"name": "The Kidney Specialists Medical Corp.", "sales": 482.26, "orders": 1}, {"name": "Parktree Community Health Center", "sales": 450.0, "orders": 1}, {"name": "Bonduelle", "sales": 423.28, "orders": 1}, {"name": "Central Valley Heart Institute ", "sales": 381.29, "orders": 7}, {"name": "Iris Wings \u2014 Sanctuary for Endometriosis Surgery", "sales": 310.0, "orders": 2}, {"name": "Keller Williams - Covina", "sales": 284.8, "orders": 2}, {"name": "Manuel Scott Jr Ministries ", "sales": 271.0, "orders": 1}, {"name": "Villar Music International", "sales": 213.96, "orders": 5}, {"name": "Wife of the Party", "sales": 175.0, "orders": 1}, {"name": "Option Printing", "sales": 158.0, "orders": 1}, {"name": "Jenica Morin-Pascual", "sales": 148.0, "orders": 1}, {"name": "Public Exchange", "sales": 130.0, "orders": 1}],
+    by_dow: {"Monday": {"sales": 709519.05}, "Friday": {"sales": 788246.22}, "Tuesday": {"sales": 421755.42}, "Thursday": {"sales": 503455.74}, "Wednesday": {"sales": 463827.9}, "Sunday": {"sales": 17300.0}, "Saturday": {"sales": 9150.0}}
+  }
+};
+var activeYear = "2024";
+
+function getYD() { return salesYears[activeYear]; }
+
+function switchYear(y) {
+  activeYear = y;
+  updateYearToggles();
+  renderSalesCharts();
+  renderProfitCharts();
+}
+
+function updateYearToggles() {
+  var years = Object.keys(salesYears).sort();
+  ["yearToggle","yearToggle2"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var html = '';
+    years.forEach(function(y) {
+      var isActive = y === activeYear;
+      var canDelete = y !== '2024';
+      var btnStyle = canDelete ? 'border-radius:99px 0 0 99px;border-right:none' : 'border-radius:99px';
+      html += '<div style="display:inline-flex;align-items:center;margin-right:4px">';
+      html += '<button class="year-btn' + (isActive ? ' active' : '') + '" style="' + btnStyle + '" onclick="switchYear(\'' + y + '\')">' + y + '</button>';
+      if (canDelete) {
+        html += '<button onclick="deleteYear(\'' + y + '\')" style="padding:4px 7px;border-radius:0 99px 99px 0;border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;font-size:11px;cursor:pointer;font-weight:700;line-height:1" title="Remove">&times;</button>';
+      }
+      html += '</div>';
+    });
+    el.innerHTML = html;
+  });
+}
+
+function deleteYear(y) {
+  if (y === '2024') return;
+  if (!confirm('Remove "' + y + '" from the dashboard and sheet?')) return;
+  delete salesYears[y];
+  if (activeYear === y) {
+    activeYear = Object.keys(salesYears).sort()[0];
+  }
+  updateYearToggles();
+  renderSalesCharts();
+  renderProfitCharts();
+  setStatus('Removing from sheet...', '');
+
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'deleteSalesYear', label: y })
+  }).then(function() {
+    setStatus('Deleted: ' + y, '');
+  }).catch(function() {
+    setStatus('Removed locally but could not delete from sheet', 'err');
+  });
+}
+
+// ----------------------------------------
+// IMPORT
+// ----------------------------------------
+function handleDrop(event) {
+  event.preventDefault();
+  var file = event.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFileSelect(event) {
+  var file = event.target.files[0];
+  if (file) processFile(file);
+}
+function setStatus(msg, type) {
+  ["importStatusP","importStatusS"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.className = 'import-status ' + (type||''); }
+  });
+}
+
+function processFile(file) {
+  var suggestedName = file.name.replace(/\.xls[x]?$/i,'');
+  var label = prompt('Name this import (e.g. 2025 Actual):', suggestedName);
+  if (label === null) return; // cancelled
+  if (!label.trim()) label = suggestedName;
+  setStatus('Reading file...', '');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, {type:'array', cellDates:true});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      parseSalesRows(rows, label.trim());
+    } catch(err) {
+      setStatus('Error: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseSalesRows(rows, label) {
+  var headerRow = -1;
+  for (var i = 0; i < Math.min(10, rows.length); i++) {
+    if (String(rows[i][0]).trim() === 'Order ID') { headerRow = i; break; }
+  }
+  if (headerRow === -1) { setStatus('Could not find Order ID column.', 'err'); return; }
+
+  var yearStr = label || new Date().getFullYear().toString();
+
+  var orders = [];
+  for (var i = headerRow + 1; i < rows.length; i++) {
+    var row = rows[i];
+    var orderId = row[0];
+    if (!orderId || isNaN(Number(orderId))) continue;
+    var dateVal = row[1];
+    var dateObj = null;
+    if (dateVal instanceof Date) { dateObj = dateVal; }
+    else if (typeof dateVal === 'number') { dateObj = new Date(Math.round((dateVal - 25569) * 86400 * 1000)); }
+    else if (typeof dateVal === 'string' && dateVal.trim()) { dateObj = new Date(dateVal); }
+    if (!dateObj || isNaN(dateObj.getTime())) continue;
+    orders.push({
+      month: dateObj.getMonth()+1,
+      dow: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dateObj.getDay()],
+      cost: parseFloat(row[5])||0,
+      margin: parseFloat(row[6])||0,
+      sales: parseFloat(row[7])||0,
+      rep: String(row[18]||'Unknown').trim(),
+      customer: String(row[19]||'Unknown').trim()
+    });
+  }
+
+  if (!orders.length) { setStatus('No valid orders found.', 'err'); return; }
+
+  var ms2 = new Array(12).fill(0), mc2 = new Array(12).fill(0), mm2 = new Array(12).fill(0), mo2 = new Array(12).fill(0);
+  var repS={}, repO={}, repM={}, custS={}, custO={}, dowS={};
+  orders.forEach(function(o) {
+    var idx = o.month-1;
+    ms2[idx]+=o.sales; mc2[idx]+=o.cost; mm2[idx]+=o.margin; mo2[idx]++;
+    repS[o.rep]=(repS[o.rep]||0)+o.sales; repO[o.rep]=(repO[o.rep]||0)+1; repM[o.rep]=(repM[o.rep]||0)+o.margin;
+    custS[o.customer]=(custS[o.customer]||0)+o.sales; custO[o.customer]=(custO[o.customer]||0)+1;
+    dowS[o.dow]=(dowS[o.dow]||{sales:0}); dowS[o.dow].sales+=o.sales;
+  });
+
+  var ts=ms2.reduce(function(a,b){return a+b;},0);
+  var tc=mc2.reduce(function(a,b){return a+b;},0);
+  var gm=mm2.reduce(function(a,b){return a+b;},0);
+  var mn2=mm2.map(function(m){return m-MONTHLY_ADMIN;});
+  var mnp2=mn2.map(function(n,i){return ms2[i]>0?n/ms2[i]*100:0;});
+  var byRep={};
+  Object.keys(repS).forEach(function(r){byRep[r]={sales:repS[r],orders:repO[r],margin:repM[r]};});
+  var byCust=Object.keys(custS).map(function(c){return{name:c,sales:custS[c],orders:custO[c]};}).sort(function(a,b){return b.sales-a.sales;}).slice(0,50);
+
+  var yearObj = {
+    total_sales:ts, total_cogs:tc, gross_margin:gm, total_orders:orders.length, avg_order:ts/orders.length,
+    monthly_sales:ms2, monthly_cogs:mc2, monthly_margin:mm2, monthly_net:mn2, monthly_net_pct:mnp2, monthly_orders:mo2,
+    by_rep:byRep, by_customer:byCust, by_dow:dowS
+  };
+  salesYears[yearStr] = yearObj;
+  activeYear = yearStr;
+  updateYearToggles();
+  renderSalesCharts();
+  renderProfitCharts();
+  setStatus('Saving to sheet...', '');
+
+  // Save to Google Sheet
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'saveSalesYear', label: yearStr, yearData: yearObj })
+  }).then(function() {
+    setStatus('Saved: ' + yearStr + ' (' + orders.length + ' orders)', 'ok');
+  }).catch(function() {
+    setStatus('Loaded but could not save to sheet', 'err');
+  });
+}
+
+// ----------------------------------------
+// SALES CHARTS
+// ----------------------------------------
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+function renderSalesCharts() {
+  var d = getYD(); if (!d) return;
+  var tm = '#898781', gc = 'rgba(0,0,0,.06)';
+
+  // Update KPIs
+  // Update sales tab year label
+  var salesYearLabel = document.getElementById('salesYearLabel');
+  if (salesYearLabel) salesYearLabel.textContent = activeYear;
+  document.getElementById('sTotalSales').textContent = '$' + (d.total_sales/1000000).toFixed(2) + 'M';
+  document.getElementById('sTotalOrders').textContent = d.total_orders.toLocaleString() + ' orders';
+  document.getElementById('sTotalCogs').textContent = '$' + (d.total_cogs/1000000).toFixed(2) + 'M';
+  document.getElementById('sGrossMargin').textContent = '$' + (d.gross_margin/1000000).toFixed(2) + 'M';
+  document.getElementById('sMarginRate').textContent = (d.gross_margin/d.total_sales*100).toFixed(1) + '% margin rate';
+  document.getElementById('sAvgOrder').textContent = '$' + Math.round(d.avg_order).toLocaleString();
+
+  if (charts.salesMonthly) charts.salesMonthly.destroy();
+  charts.salesMonthly = new Chart(document.getElementById('salesMonthlyChart'), {
+    type:'bar',
+    data:{labels:MONTHS,datasets:[
+      {label:'Sales',data:d.monthly_sales,backgroundColor:'#2a78d6',borderRadius:3,borderSkipped:false,barThickness:18},
+      {label:'Margin',data:d.monthly_margin,backgroundColor:'#1baf7a',borderRadius:3,borderSkipped:false,barThickness:18}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      onClick:function(e,els){if(els.length)openMonthDrill(els[0].index);},
+      onHover:function(e,els){e.native.target.style.cursor=els.length?'pointer':'default';},
+      plugins:{legend:{position:'top',labels:{font:{size:12},color:tm,boxWidth:12}},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.dataset.label+': $'+Math.round(ctx.parsed.y).toLocaleString()+' - click to drill in';}}}},
+      scales:{x:{ticks:{color:tm,font:{size:11}},grid:{display:false},border:{display:false}},y:{ticks:{color:tm,font:{size:10},callback:function(v){return '$'+(v/1000).toFixed(0)+'K';}},grid:{color:gc},border:{display:false}}}}
+  });
+
+  var repNames = Object.keys(d.by_rep);
+  var repColors = ['#2a78d6','#1baf7a','#eda100','#e34948','#4a3aa7'];
+  if (charts.salesRep) charts.salesRep.destroy();
+  charts.salesRep = new Chart(document.getElementById('salesRepChart'), {
+    type:'doughnut',
+    data:{labels:repNames,datasets:[{data:repNames.map(function(r){return d.by_rep[r].sales;}),backgroundColor:repColors.slice(0,repNames.length),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{position:'right',labels:{font:{size:11},color:tm,boxWidth:10,padding:8}},tooltip:{callbacks:{label:function(ctx){return ' $'+Math.round(ctx.parsed).toLocaleString()+' ('+(ctx.parsed/d.total_sales*100).toFixed(1)+'%)';}}}}
+    }
+  });
+
+  if (charts.salesDow) charts.salesDow.destroy();
+  charts.salesDow = new Chart(document.getElementById('salesDowChart'), {
+    type:'bar',
+    data:{labels:DAYS,datasets:[{data:DAYS.map(function(day){return d.by_dow[day]?d.by_dow[day].sales:0;}),backgroundColor:'#4a3aa7',borderRadius:4,borderSkipped:false,barThickness:28}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' $'+Math.round(ctx.parsed.y).toLocaleString();}}}},
+      scales:{x:{ticks:{color:tm,font:{size:11}},grid:{display:false},border:{display:false}},y:{ticks:{color:tm,font:{size:10},callback:function(v){return '$'+(v/1000).toFixed(0)+'K';}},grid:{color:gc},border:{display:false}}}}
+  });
+
+  renderCustomers(d.by_customer);
+}
+
+function renderCustomers(customers) {
+  var tbody = document.getElementById('custTableBody');
+  if (!tbody) return;
+  var d = getYD();
+  var totalSales = d ? d.total_sales : 1;
+  tbody.innerHTML = customers.map(function(c, i) {
+    var pct = (c.sales/totalSales*100).toFixed(1);
+    return '<tr>'
+      +'<td style="color:var(--text-3);font-size:12px">'+(i+1)+'</td>'
+      +'<td style="font-weight:500">'+c.name+'</td>'
+      +'<td style="font-weight:600">$'+Math.round(c.sales).toLocaleString()+'</td>'
+      +'<td style="color:var(--text-2)">'+c.orders+'</td>'
+      +'<td style="color:var(--text-2)">$'+Math.round(c.sales/c.orders).toLocaleString()+'</td>'
+      +'<td><div style="display:flex;align-items:center;gap:8px">'
+        +'<div style="flex:1;height:4px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:4px;background:#2a78d6;border-radius:99px;width:'+pct+'%"></div></div>'
+        +'<span style="font-size:12px;color:var(--text-3);white-space:nowrap">'+pct+'%</span>'
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function filterCustomers() {
+  var q = document.getElementById('custSearch').value.toLowerCase();
+  var d = getYD(); if (!d) return;
+  renderCustomers(d.by_customer.filter(function(c){ return c.name.toLowerCase().indexOf(q) !== -1; }));
+}
+
+// ----------------------------------------
+// PROFIT CHARTS
+// ----------------------------------------
+
+function openMonthDrill(monthIdx) {
+  var d = getYD();
+  if (!d) return;
+  var monthName = MONTHS[monthIdx];
+  var sales = d.monthly_sales[monthIdx];
+  var cogs = d.monthly_cogs[monthIdx];
+  var margin = d.monthly_margin[monthIdx];
+  var net = d.monthly_net[monthIdx];
+  var pct = d.monthly_net_pct[monthIdx];
+  var nc = net >= 0 ? '#166534' : '#991b1b';
+  var sign = net >= 0 ? '' : '-';
+
+  document.getElementById('drillLabel').textContent = activeYear + ' Monthly Detail';
+  document.getElementById('drillTitle').textContent = monthName;
+  document.getElementById('drillTitle').style.color = '#0b0b0b';
+  document.getElementById('drillYearly').textContent = '$' + Math.round(sales).toLocaleString();
+  document.getElementById('drillMonthly').textContent = (d.monthly_orders ? d.monthly_orders[monthIdx] : '-') + ' orders';
+  document.getElementById('drillPct').textContent = sign + '$' + Math.abs(Math.round(net)).toLocaleString() + ' net';
+
+  document.getElementById('drillBody').innerHTML =
+    '<tr style="border-bottom:1px solid var(--border)">'
+      + '<td style="padding:14px 10px;font-size:13px;color:var(--text-3)">Total Sales</td>'
+      + '<td colspan="3" style="padding:14px 10px;text-align:right;font-size:18px;font-weight:700;color:#2a78d6">$' + Math.round(sales).toLocaleString() + '</td>'
+    + '</tr>'
+    + '<tr style="border-bottom:1px solid var(--border)">'
+      + '<td style="padding:12px 10px;font-size:13px;color:var(--text-3)">Cost of Goods</td>'
+      + '<td colspan="3" style="padding:12px 10px;text-align:right;font-size:16px;font-weight:600;color:#991b1b">-$' + Math.round(cogs).toLocaleString() + '</td>'
+    + '</tr>'
+    + '<tr style="border-bottom:1px solid var(--border)">'
+      + '<td style="padding:12px 10px;font-size:13px;color:var(--text-3)">Gross Margin</td>'
+      + '<td colspan="3" style="padding:12px 10px;text-align:right;font-size:16px;font-weight:600;color:#1baf7a">$' + Math.round(margin).toLocaleString() + ' <span style=\"font-size:12px;color:var(--text-3)\">('+( sales>0?(margin/sales*100).toFixed(1):0)+'%)</span></td>'
+    + '</tr>'
+    + '<tr style="border-bottom:1px solid var(--border)">'
+      + '<td style="padding:12px 10px;font-size:13px;color:var(--text-3)">Admin & Overhead</td>'
+      + '<td colspan="3" style="padding:12px 10px;text-align:right;font-size:16px;font-weight:600;color:#991b1b">-$' + Math.round(MONTHLY_ADMIN).toLocaleString() + '</td>'
+    + '</tr>'
+    + '<tr style="background:' + (net>=0?'#f0fdf4':'#fef2f2') + '">'
+      + '<td style="padding:14px 10px;font-size:13px;font-weight:600;color:' + nc + '">Net Profit</td>'
+      + '<td colspan="3" style="padding:14px 10px;text-align:right;font-size:20px;font-weight:700;color:' + nc + '">' + sign + '$' + Math.abs(Math.round(net)).toLocaleString() + ' <span style=\"font-size:13px\">('+pct.toFixed(1)+'%)</span></td>'
+    + '</tr>';
+
+  document.getElementById('drillOverlay').style.display = 'block';
+  document.getElementById('drillPanel').style.transform = 'translateX(0)';
+}
+
+
+function renderYearComparison() {
+  var years = Object.keys(salesYears).sort();
+  var card = document.getElementById('yearCompCard');
+  if (!card) return;
+
+  // Only show if more than 1 year
+  if (years.length < 2) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  var tbody = document.getElementById('yearCompBody');
+  var rowColors = ['#2a78d6','#1baf7a','#eda100','#e34948','#4a3aa7'];
+
+  // Per-year rows
+  var totalSalesAll = 0, totalCogsAll = 0, totalMarginAll = 0, totalNetAll = 0;
+  var yearRows = years.map(function(y, idx) {
+    var d = salesYears[y];
+    var net = d.gross_margin - TOTAL_ADMIN;
+    var grossPct = (d.gross_margin / d.total_sales * 100).toFixed(1);
+    var netPct = (net / d.total_sales * 100).toFixed(1);
+    var nc = net >= 0 ? '#166534' : '#991b1b';
+    var isActive = y === activeYear;
+    totalSalesAll += d.total_sales;
+    totalCogsAll += d.total_cogs;
+    totalMarginAll += d.gross_margin;
+    totalNetAll += net;
+    return '<tr style="cursor:pointer;' + (isActive ? 'background:var(--accent-bg)' : '') + '" onclick="switchYear(\'' + y + '\')">'
+      + '<td style="font-weight:600;color:' + rowColors[idx % rowColors.length] + '">' + y + (isActive ? ' <span style=\"font-size:10px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:99px\">viewing</span>' : '') + '</td>'
+      + '<td style="font-weight:600">$' + Math.round(d.total_sales).toLocaleString() + '</td>'
+      + '<td style="color:#991b1b">$' + Math.round(d.total_cogs).toLocaleString() + '</td>'
+      + '<td style="color:#1baf7a">$' + Math.round(d.gross_margin).toLocaleString() + '</td>'
+      + '<td style="color:#1baf7a">' + grossPct + '%</td>'
+      + '<td style="color:var(--text-2)">$' + Math.round(TOTAL_ADMIN).toLocaleString() + '</td>'
+      + '<td style="font-weight:700;color:' + nc + '">' + (net>=0?'':'- ') + '$' + Math.abs(Math.round(net)).toLocaleString() + '</td>'
+      + '<td style="color:' + nc + '">' + netPct + '%</td>'
+      + '</tr>';
+  }).join('');
+
+  // Totals row
+  var totalGrossPct = totalSalesAll > 0 ? (totalMarginAll / totalSalesAll * 100).toFixed(1) : '0.0';
+  var totalNetPct = totalSalesAll > 0 ? (totalNetAll / totalSalesAll * 100).toFixed(1) : '0.0';
+  var totalAdminAll = TOTAL_ADMIN * years.length;
+  var totalNc = totalNetAll >= 0 ? '#166534' : '#991b1b';
+  var totalsRow = '<tr style="background:var(--bg);border-top:2px solid var(--border-strong)">'
+    + '<td style="font-weight:700;color:var(--text);font-size:13px">All years combined</td>'
+    + '<td style="font-weight:700;font-size:13px">$' + Math.round(totalSalesAll).toLocaleString() + '</td>'
+    + '<td style="color:#991b1b;font-weight:700">$' + Math.round(totalCogsAll).toLocaleString() + '</td>'
+    + '<td style="color:#1baf7a;font-weight:700">$' + Math.round(totalMarginAll).toLocaleString() + '</td>'
+    + '<td style="color:#1baf7a;font-weight:700">' + totalGrossPct + '%</td>'
+    + '<td style="color:var(--text-2);font-weight:700">$' + Math.round(totalAdminAll).toLocaleString() + '</td>'
+    + '<td style="font-weight:800;color:' + totalNc + ';font-size:14px">' + (totalNetAll>=0?'':'- ') + '$' + Math.abs(Math.round(totalNetAll)).toLocaleString() + '</td>'
+    + '<td style="color:' + totalNc + ';font-weight:700">' + totalNetPct + '%</td>'
+    + '</tr>';
+
+  tbody.innerHTML = yearRows + totalsRow;
+
+  // Comparison chart
+  var tm = '#898781', gc = 'rgba(0,0,0,.06)';
+  if (charts.yearComp) charts.yearComp.destroy();
+  charts.yearComp = new Chart(document.getElementById('yearCompChart'), {
+    type: 'bar',
+    data: {
+      labels: years,
+      datasets: [
+        { label: 'Sales', data: years.map(function(y){ return salesYears[y].total_sales; }), backgroundColor: '#2a78d6', borderRadius: 3, borderSkipped: false, barThickness: 32 },
+        { label: 'Gross margin', data: years.map(function(y){ return salesYears[y].gross_margin; }), backgroundColor: '#1baf7a', borderRadius: 3, borderSkipped: false, barThickness: 32 },
+        { label: 'Net profit', data: years.map(function(y){ return salesYears[y].gross_margin - TOTAL_ADMIN; }), backgroundColor: years.map(function(y){ return (salesYears[y].gross_margin - TOTAL_ADMIN) >= 0 ? '#166534' : '#e34948'; }), borderRadius: 3, borderSkipped: false, barThickness: 32 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 12 }, color: tm, boxWidth: 12 } },
+        tooltip: { callbacks: { label: function(ctx){ return ' ' + ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString(); } } }
+      },
+      scales: {
+        x: { ticks: { color: tm, font: { size: 12 } }, grid: { display: false }, border: { display: false } },
+        y: { ticks: { color: tm, font: { size: 10 }, callback: function(v){ return '$' + (v/1000).toFixed(0) + 'K'; } }, grid: { color: gc }, border: { display: false } }
+      }
+    }
+  });
+}
+
+function renderProfitCharts() {
+  var d = getYD(); if (!d) return;
+  var netProfit = d.gross_margin - TOTAL_ADMIN;
+  var netRate = (netProfit/d.total_sales*100).toFixed(1);
+  var grossRate = (d.gross_margin/d.total_sales*100).toFixed(1);
+  var tm = '#898781', gc = 'rgba(0,0,0,.06)';
+
+  // Update P&L banner
+  document.getElementById('plTitle').textContent = activeYear + ' — Profit & Loss Summary';
+  var npColor = netProfit >= 0 ? '#166534' : '#991b1b';
+  var npBg = netProfit >= 0 ? '#f0fdf4' : '#fef2f2';
+  document.getElementById('plGrid').innerHTML =
+    plCell('Total Sales', '$'+Math.round(d.total_sales).toLocaleString(), d.total_orders.toLocaleString()+' orders', '') +
+    plCell('Cost of Goods', '-$'+Math.round(d.total_cogs).toLocaleString(), (d.total_cogs/d.total_sales*100).toFixed(1)+'% of sales', '#991b1b') +
+    plCell('Gross Margin', '$'+Math.round(d.gross_margin).toLocaleString(), grossRate+'% margin rate', '#1baf7a') +
+    plCell('Admin &amp; Overhead', '-$'+Math.round(TOTAL_ADMIN).toLocaleString(), 'Payroll + overhead', '#991b1b') +
+    '<div class="pl-cell" style="background:'+npBg+'"><div class="pl-cell-label" style="color:'+npColor+';font-weight:600">Net Profit</div><div class="pl-cell-value" style="color:'+npColor+'">$'+Math.round(netProfit).toLocaleString()+'</div><div class="pl-cell-sub" style="color:'+npColor+'">'+netRate+'% net margin</div></div>';
+
+  if (charts.waterfall) charts.waterfall.destroy();
+  charts.waterfall = new Chart(document.getElementById('waterfallChart'), {
+    type:'bar',
+    data:{labels:['Total Sales','Cost of Goods','Gross Margin','Admin & Overhead','Net Profit'],
+      datasets:[{data:[d.total_sales,d.total_cogs,d.gross_margin,TOTAL_ADMIN,netProfit],backgroundColor:['#2a78d6','#e34948','#1baf7a','#e34948','#166534'],borderRadius:4,borderSkipped:false,barThickness:52}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' $'+Math.round(ctx.parsed.y).toLocaleString();}}}},
+      scales:{x:{ticks:{color:tm,font:{size:12}},grid:{display:false},border:{display:false}},y:{ticks:{color:tm,font:{size:10},callback:function(v){return '$'+(v/1000).toFixed(0)+'K';}},grid:{color:gc},border:{display:false}}}}
+  });
+
+  var netColors = d.monthly_net.map(function(v){ return v>=0?'#1baf7a':'#e34948'; });
+  if (charts.monthlyNet) charts.monthlyNet.destroy();
+  charts.monthlyNet = new Chart(document.getElementById('monthlyNetChart'), {
+    type:'bar',
+    data:{labels:MONTHS,datasets:[{data:d.monthly_net,backgroundColor:netColors,borderRadius:4,borderSkipped:false,barThickness:28}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      onClick:function(e,els){if(els.length)openMonthDrill(els[0].index);},
+      onHover:function(e,els){e.native.target.style.cursor=els.length?'pointer':'default';},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' $'+Math.round(ctx.parsed.y).toLocaleString()+' ('+d.monthly_net_pct[ctx.dataIndex].toFixed(1)+'%) - click to drill in';}}}}  ,
+      scales:{x:{ticks:{color:tm,font:{size:11}},grid:{display:false},border:{display:false}},y:{ticks:{color:tm,font:{size:10},callback:function(v){return '$'+(v/1000).toFixed(0)+'K';}},grid:{color:gc},border:{display:false}}}}
+  });
+
+  // Rebuild monthly table
+  var tbody = document.getElementById('profitTableBody');
+  if (tbody) {
+    tbody.innerHTML = MONTHS.map(function(m,i) {
+      var net = d.monthly_net[i];
+      var pct = d.monthly_net_pct[i];
+      var nc = net>=0?'#166534':'#991b1b';
+      var sign = net>=0?'':'-';
+      return '<tr style="cursor:pointer" onclick="openMonthDrill('+i+')" title="Click to see '+m+' detail"><td style="font-weight:500">'+m+' <span style=\"font-size:10px;color:var(--text-3)\">&#8250;</span></td><td>$'+Math.round(d.monthly_sales[i]).toLocaleString()+'</td><td style="color:#991b1b">$'+Math.round(d.monthly_cogs[i]).toLocaleString()+'</td><td style="color:#1baf7a">$'+Math.round(d.monthly_margin[i]).toLocaleString()+'</td><td style="color:#52514e">$'+Math.round(MONTHLY_ADMIN).toLocaleString()+'</td><td style="font-weight:600;color:'+nc+'">'+sign+'$'+Math.abs(Math.round(net)).toLocaleString()+'</td><td><span style="font-size:12px;color:'+nc+'">'+pct.toFixed(1)+'%</span></td></tr>';
+    }).join('');
+  }
+
+  renderYearComparison();
+}
+
+function plCell(label, value, sub, color) {
+  return '<div class="pl-cell"><div class="pl-cell-label">'+label+'</div><div class="pl-cell-value" style="color:'+(color||'var(--text)')+'">'+value+'</div><div class="pl-cell-sub">'+sub+'</div></div>';
+}
+
+// ----------------------------------------
+// UTILS
+// ----------------------------------------
+function fmtShort(n) { var v=Math.round(n); if(v>=1000000)return '$'+(v/1000000).toFixed(2)+'M'; if(v>=1000)return '$'+Math.round(v/1000)+'K'; return '$'+v; }
+function fmtFull(n) { return '$'+Math.round(n).toLocaleString(); }
+function showError(msg) { var el=document.getElementById('errorBanner'); el.textContent=msg; el.style.display='block'; }
+function hideError() { document.getElementById('errorBanner').style.display='none'; }
+
+// ----------------------------------------
+// INIT
+// ----------------------------------------
+document.getElementById('pwScreen').style.display = 'flex';
+document.getElementById('mainDash').style.display = 'none';
+</script>
+</body>
+</html>
